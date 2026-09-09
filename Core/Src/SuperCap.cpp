@@ -54,28 +54,26 @@ void init()
     if (hardwareID != (uint32_t)HARDWARE_ID)
     {
 #ifdef CALIBRATION_MODE
-        while (HAL_FLASH_OB_Unlock() != HAL_OK)  // unlock flash option bytes
-            __ASM volatile("bkpt ");
+        /* 直接寄存器写 Option Byte DATA0 (HAL_FLASHEx_OBProgram 在该 F334 上不生效)。
+           只写 DATA0 值 + 取反(半字)，不擦除、不碰 RDP/USER/WRP，避免读保护级别变化 */
+        WRITE_REG(FLASH->KEYR, FLASH_KEY1);
+        WRITE_REG(FLASH->KEYR, FLASH_KEY2);
+        WRITE_REG(FLASH->OPTKEYR, FLASH_OPTKEY1);
+        WRITE_REG(FLASH->OPTKEYR, FLASH_OPTKEY2);
 
-        while (HAL_FLASHEx_OBErase() != HAL_OK)  // erase option bytes
-            __ASM volatile("bkpt ");
+        SET_BIT(FLASH->CR, FLASH_CR_OPTPG);
+        *(__IO uint16_t *)OB_DATA_ADDRESS_DATA0 = (uint16_t)((HARDWARE_ID & 0xFFU) |
+                                                              (((~HARDWARE_ID) & 0xFFU) << 8));
+        while (READ_BIT(FLASH->SR, FLASH_SR_BSY) != 0U)
+            ;
+        CLEAR_BIT(FLASH->CR, FLASH_CR_OPTPG);
 
-        FLASH_OBProgramInitTypeDef pOBInit;
-        pOBInit.OptionType  = OPTIONBYTE_WRP | OPTIONBYTE_RDP | OPTIONBYTE_USER | OPTIONBYTE_DATA;
-        pOBInit.WRPState    = OB_WRPSTATE_DISABLE;
-        pOBInit.WRPPage     = 0xFFFFFFFF;
-        pOBInit.RDPLevel    = OB_RDP_LEVEL_0;
-        pOBInit.USERConfig  = OB_IWDG_SW | OB_STOP_NO_RST | OB_STDBY_NO_RST | OB_BOOT1_RESET | OB_VDDA_ANALOG_ON | OB_SRAM_PARITY_RESET;
-        pOBInit.DATAAddress = OB_DATA_ADDRESS_DATA0;
-        pOBInit.DATAData    = (uint8_t)HARDWARE_ID;        // set hardware id
+        SET_BIT(FLASH->CR, FLASH_CR_LOCK);
 
-        while (HAL_FLASHEx_OBProgram(&pOBInit) != HAL_OK)  // program option bytes
-            __ASM volatile("bkpt ");
-
-        while (HAL_FLASH_OB_Lock() != HAL_OK)  // lock flash option bytes
-            __ASM volatile("bkpt ");
-
-        while (HAL_FLASH_OB_Launch() != HAL_OK)  // launch option bytes
+        /* OBL_LAUNCH 触发 Option Bytes 重新加载并复位(见 RM0316 FLASH_CR 位13)。
+           仅 NVIC_SystemReset() 不会重载 OBR，HAL_FLASHEx_OBGetUserData 仍读到旧值 */
+        SET_BIT(FLASH->CR, FLASH_CR_OBL_LAUNCH);
+        while (true)
             __ASM volatile("bkpt ");
 
 #endif

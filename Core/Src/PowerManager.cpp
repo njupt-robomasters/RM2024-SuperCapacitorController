@@ -338,7 +338,7 @@ static void handleErrorState()
 {
     /* Under Voltage */
 #ifdef CALIBRATION_MODE
-    if (ProcessedSampleData::processedSampleData.vASide < 12.0f && ProcessedSampleData::processedSampleData.vBSide < 12.0f)
+    if (SampleManager::ProcessedData::processedData.vASide < 12.0f && SampleManager::ProcessedData::processedData.vBSide < 12.0f)
     {
         ControlData::controlData.enableOutput = false;
         errorCheckData.currentError |= ERROR_UNDER_VOLTAGE;
@@ -465,11 +465,11 @@ static void handleErrorState()
      * capacitor will be very large. The charge will be monitored, if the charge is too large, the capacitor is considered to be shorted or
      * overcharged.
      */
-    errorCheckData.capVoltageChange += ProcessedSampleData::processedSampleData.vBSide - errorCheckData.lastCapVoltage;
-    errorCheckData.lastCapVoltage = ProcessedSampleData::processedSampleData.vBSide;
+    errorCheckData.capVoltageChange += SampleManager::ProcessedData::processedData.vBSide - errorCheckData.lastCapVoltage;
+    errorCheckData.lastCapVoltage = SampleManager::ProcessedData::processedData.vBSide;
     if (errorCheckData.capVoltageChange > 3.0f || errorCheckData.capVoltageChange < -3.0f)
     {
-        float estimatedCapacitance = ProcessedSampleData::processedSampleData.capCharge / errorCheckData.capVoltageChange * 2.777777809e-05f;
+        float estimatedCapacitance = SampleManager::ProcessedData::processedData.capCharge / errorCheckData.capVoltageChange * 2.777777809e-05f;
         estimatedCapacitance       = M_ABS(estimatedCapacitance);
 
         if (Status::status.outputEnabled && estimatedCapacitance < 4e-5f)  // cap disconnected
@@ -481,9 +481,9 @@ static void handleErrorState()
 
         errorCheckData.capacitanceEstimateCnt              = 0;
         errorCheckData.capVoltageChange                    = 0.0f;
-        ProcessedSampleData::processedSampleData.capCharge = 0.0f;
+        SampleManager::ProcessedData::processedData.capCharge = 0.0f;
     }
-    else if (ProcessedSampleData::processedSampleData.capCharge > 200000.0f || ProcessedSampleData::processedSampleData.capCharge < -200000.0f)
+    else if (SampleManager::ProcessedData::processedData.capCharge > 200000.0f || SampleManager::ProcessedData::processedData.capCharge < -200000.0f)
     {
         if (Status::status.outputEnabled && errorCheckData.capVoltageChange < 0.2f &&
             errorCheckData.capVoltageChange > -0.2f)  // cap overcharged / short circuit
@@ -499,13 +499,13 @@ static void handleErrorState()
         }
         errorCheckData.capacitanceEstimateCnt              = 0;
         errorCheckData.capVoltageChange                    = 0.0f;
-        ProcessedSampleData::processedSampleData.capCharge = 0.0f;
+        SampleManager::ProcessedData::processedData.capCharge = 0.0f;
     }
     else if (errorCheckData.capacitanceEstimateCnt++ > 10000)
     {
         errorCheckData.capacitanceEstimateCnt              = 0;
         errorCheckData.capVoltageChange                    = 0.0f;
-        ProcessedSampleData::processedSampleData.capCharge = 0.0f;
+        SampleManager::ProcessedData::processedData.capCharge = 0.0f;
     }
 
     if (--errorCheckData.capErrorCnt < 0)
