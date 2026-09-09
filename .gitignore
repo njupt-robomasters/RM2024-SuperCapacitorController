@@ -46,4 +46,6 @@ compile_commands.json
 # cubeMX files
 .mxproject
 .project
-/cmake-build-debug
+
+cmake-build-debug-arm/
+cmake-build-release-arm/
